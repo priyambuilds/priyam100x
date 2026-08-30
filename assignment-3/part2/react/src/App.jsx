@@ -2,6 +2,8 @@ import { useState } from "react";
 import { totalPaid, totalOwed, balances, summary } from "./core/calculator";
 import LeftColumn from "./components/LeftColumn";
 import RightColumn from "./components/RightColumn";
+import ExpenseTable from "./components/Table";
+import ExpenseForm from "./components/Forum";
 
 export default function App() {
   const [state, setState] = useState({
@@ -32,13 +34,17 @@ export default function App() {
     ],
     filter: { memberId: null, search: "" },
   });
+  const handleAddExpense = (newExpense) => {
+    setState((prevState) => ({
+      ...prevState, expenses: [...prevState.expenses, newExpense]
+    }))
+  }
+
   const paid = totalPaid(state.expenses, state.members);
   const owed = totalOwed(state.expenses, state.members);
   const totalBalance = balances(paid, owed);
   const summaryData = summary(state.expenses, state.members)
 
-  const handleAddMember = () => {};
-  const handleDelMember = () => {};
   return (
     <main className="w-full h-screen bg-black overflow-hidden">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-2 h-full max-w-7xl mx-auto">
@@ -46,9 +52,14 @@ export default function App() {
           members={state.members}
           balances={totalBalance}
         />
-
-        <div className="bg-white p-4 shadow-md rounded-xl text-gray-400">
-          Middle Column (Pending)
+        <div className="bg-black p-4 shadow-md rounded-xl text-gray-400">
+          <ExpenseForm
+            members={state.members}
+            onAddExpense={handleAddExpense}
+          />
+          <ExpenseTable
+            expenses={state.expenses}
+          />
         </div>
         <RightColumn
           summary={summaryData}
