@@ -24,8 +24,6 @@ export default function LeftColumn({
   const handleAdd = (e) => {
     e.preventDefault();
     if (!newMember) return;
-    onAddMember(newMember);
-      setNewMember("");
     const errorMessage = onAddMember(newMember);
     if (errorMessage) {
       toast.error(errorMessage);
