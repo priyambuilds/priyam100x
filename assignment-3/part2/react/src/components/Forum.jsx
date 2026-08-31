@@ -2,6 +2,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "./ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Select,
   SelectContent,
@@ -19,6 +20,7 @@ export default function ExpenseForm({ members = [], onAddExpense }) {
   const [amount, setAmount] = useState("");
   const [payer, setPayer] = useState("");
   const [participants, setParticipants] = useState([]);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     setParticipants(members);
@@ -34,7 +36,15 @@ export default function ExpenseForm({ members = [], onAddExpense }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!desc || !amount || !payer) return;
+    if (!desc || !amount || !payer) {
+      return setError("All fields are required")
+    }
+    if (Number(amount) <=0) {
+      return setError("Amount must be greater than zero")
+    }
+    if (participants.length == 0) {
+      return setError("Select atleast one participant")
+    }
     onAddExpense({
       id: Date.now(),
       desc: desc,
@@ -45,12 +55,20 @@ export default function ExpenseForm({ members = [], onAddExpense }) {
 
     setDesc("");
     setAmount("");
+    setPayer("");
+    setParticipants(members);
+    setError(null);
   };
 
   return (
     <Card className="w-full">
       <CardHeader>Add expenses</CardHeader>
       <CardContent>
+        {error && (
+          <Alert variant="destructive" className="border-red-500 text-red-500 rounded-none">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
         <form onSubmit={handleSubmit}>
           <div>
             <Label>Amount</Label>

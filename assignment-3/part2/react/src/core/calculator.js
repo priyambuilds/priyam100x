@@ -73,7 +73,7 @@ export const filterExpenses = (obj, {member, search}) => {
         const item = desc.toLowerCase().includes(search.toLowerCase()) || !search
         return members && item
     })
-    .map(n => n.desc)
+
 }
 
 export const summary = (expenses, members) => {

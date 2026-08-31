@@ -73,7 +73,7 @@ const byMember = (obj, name) => {
     })
     .map(({desc}) => desc)
 }
-console.log(byMember(expenses, "kabir"));
+// console.log(byMember(expenses, "kabir"));
 
 const search = (obj, name) => {
     return obj.filter(({ desc }) =>
@@ -81,7 +81,7 @@ const search = (obj, name) => {
     )
     .map(item => item.desc).join()
 }
-search(expenses, "wi")
+// search(expenses, "wi")
 
 const filterExpenses = (obj, {member, search}) => {
     return obj.filter(({ paidBy, participants, desc }) => {
@@ -89,9 +89,8 @@ const filterExpenses = (obj, {member, search}) => {
         const item = desc.toLowerCase().includes(search.toLowerCase()) || !search
         return members && item
     })
-    .map(n => n.desc)
 }
-console.log(filterExpenses(expenses, { member: null, search: "" }))
+console.log(filterExpenses(expenses, { member: "kabir", search: "" }))
 
 const summary = (expenses, members) => {
     let total = Object.values(totalPaid(expenses, members)).reduce((acc, item) => acc + item, 0)
