@@ -12,7 +12,7 @@ export const splitEvenly = (total, n) => {
     let base = Math.round(newTotal/n)
     let cents = newTotal%n
     let arr = new Array(n).fill(base).map((num, i) => (i < cents ? num + 1 : num)/100)
-    return arr
+    return arr // the leftover paisa is distributed starting from arr[0]
 }
 
 
@@ -42,7 +42,6 @@ export const verify = (obj) => {
     return Math.abs(sum) < 0.01;
 }
 
-// If 2 members are tied at the top, it will return the array of those 2 member's names
 export const biggestSpender = (obj) => {
     const maxAmount = Math.max(...Object.values((obj)))
     const result = Object.entries(obj)
