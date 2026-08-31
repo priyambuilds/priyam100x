@@ -1,26 +1,22 @@
-import { Card, CardHeader, CardTitle, CardContent } from "./ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-  SelectGroup,
-  SelectLabel,
 } from "@/components/ui/select";
 import { useEffect, useState } from "react";
 import { Label } from "./ui/label";
+import { Toaster, toast } from "sonner";
 
 export default function ExpenseForm({ members = [], onAddExpense }) {
   const [desc, setDesc] = useState("");
   const [amount, setAmount] = useState("");
   const [payer, setPayer] = useState("");
   const [participants, setParticipants] = useState([]);
-  const [error, setError] = useState(null);
 
   useEffect(() => {
     setParticipants(members);
@@ -37,13 +33,13 @@ export default function ExpenseForm({ members = [], onAddExpense }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!desc || !amount || !payer) {
-      return setError("All fields are required")
+      return toast.error("All fields are required");
     }
-    if (Number(amount) <=0) {
-      return setError("Amount must be greater than zero")
+    if (Number(amount) <= 0) {
+      return toast.error("Amount should be greater than 10");
     }
     if (participants.length == 0) {
-      return setError("Select atleast one participant")
+      return toast.error("Select atleast one participant");
     }
     onAddExpense({
       id: Date.now(),
@@ -52,72 +48,80 @@ export default function ExpenseForm({ members = [], onAddExpense }) {
       paidBy: payer,
       participants: participants,
     });
-
     setDesc("");
     setAmount("");
     setPayer("");
     setParticipants(members);
-    setError(null);
   };
 
-  return (
-    <Card className="w-full">
-      <CardHeader>Add expenses</CardHeader>
-      <CardContent>
-        {error && (
-          <Alert variant="destructive" className="border-red-500 text-red-500 rounded-none">
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
-        <form onSubmit={handleSubmit}>
-          <div>
-            <Label>Amount</Label>
-            <Input
-              type="number"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder="Amount"
-            />
-          </div>
-          <div>
-            <Label>Desc</Label>
-            <Input
-              value={desc}
-              onChange={(e) => setDesc(e.target.value)}
-              placeholder="Description"
-            />
-          </div>
-          <div>
-            <Label>Paid by</Label>
-            <Select value={payer} onValueChange={setPayer}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select a payer"/>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  <SelectLabel>members</SelectLabel>
-                  {members.map((m) => (
-                    <SelectItem key={m} value={m}>{m}</SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label>Split amount</Label>
+return (
+    <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-5 mb-6">
+      <h3 className="text-sm font-medium text-white mb-1">Add Expense</h3>
+      <p className="text-xs text-zinc-500 mb-6">Set the details for the transaction.</p>
+
+      <form onSubmit={handleSubmit} className="space-y-3">
+        <div className="flex items-center gap-4">
+          <Label className="w-1/4 text-xs font-medium text-zinc-400">Description</Label>
+          <Input
+            value={desc}
+            onChange={(e) => setDesc(e.target.value)}
+            className="flex-1 bg-black border-zinc-800 focus-visible:ring-zinc-700 h-9 text-white"
+          />
+        </div>
+
+        <div className="flex items-center gap-4">
+          <Label className="w-1/4 text-xs font-medium text-zinc-400">Amount</Label>
+          <Input
+            type="number"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            className="flex-1 bg-black border-zinc-800 focus-visible:ring-zinc-700 h-9 text-white"
+          />
+        </div>
+
+        <div className="flex items-center gap-4">
+          <Label className="w-1/4 text-xs font-medium text-zinc-400">Paid By</Label>
+          <Select value={payer} onValueChange={setPayer}>
+            <SelectTrigger className="flex-1 bg-black border-zinc-800 h-9 text-white focus:ring-zinc-700">
+              <SelectValue placeholder="Select a payer" />
+            </SelectTrigger>
+            <SelectContent className="bg-zinc-950 border-zinc-800 text-white">
+              {members.map((m) => (
+                <SelectItem key={m} value={m}>{m}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="flex items-start gap-4 pt-2">
+          <Label className="w-1/4 text-xs font-medium text-zinc-400 mt-1">Split Between</Label>
+          <div className="flex-1 flex flex-wrap gap-4">
+            {members.length === 0 && <span className="text-xs text-zinc-600">No members added yet.</span>}
             {members.map((member) => (
-              <div key={member}>
+              <div key={member} className="flex items-center space-x-2">
                 <Checkbox
+                  id={`checkbox-${member}`}
                   checked={participants.includes(member)}
                   onCheckedChange={() => handleToggle(member)}
+                  className="border-zinc-700 data-[state=checked]:bg-white data-[state=checked]:text-black"
                 />
-                <span>{member}</span>
+                <label
+                  htmlFor={`checkbox-${member}`}
+                  className="text-xs font-medium leading-none text-zinc-300 peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                >
+                  {member}
+                </label>
               </div>
             ))}
           </div>
-          <Button type="submit" className="w-full bg-white text-black hover:bg-gray-200">Add Expense</Button>
-        </form>
-      </CardContent>
-    </Card>
+        </div>
+
+        <div className="flex items-center justify-between pt-4 mt-2 border-t border-zinc-800/50"> 
+          <Button type="submit" className="h-9 px-6 bg-white text-black hover:bg-zinc-200">
+            Save Expense
+          </Button>
+        </div>
+      </form>
+    </div>
   );
 }

@@ -15,19 +15,19 @@ export default function App() {
 
     return {
       members: [],
-      expenses: [], 
+      expenses: [],
       filter: { memberId: null, search: "" },
     }
   });
 
   useEffect(() => {
     localStorage.setItem("bill-splitter-data", JSON.stringify(state))
-  })
+  }, [state])
 
   const handleFilterChange = (key, value) => {
     setState(prev => ({
       ...prev,
-      filter: {...prev.filter, [key]: value}
+      filter: { ...prev.filter, [key]: value }
     }))
   }
 
@@ -49,7 +49,7 @@ export default function App() {
   const handleAddMembers = (newMember) => {
     const cleanName = newMember.trim().toLowerCase();
     if (!cleanName) return "Name cannot be empty";
-    if(state.members.includes(cleanName)) return `${cleanName} is already a member`
+    if (state.members.includes(cleanName)) return `${cleanName} is already a member`
     setState((prevState) => ({
       ...prevState,
       members: [...prevState.members, cleanName],
@@ -76,15 +76,17 @@ export default function App() {
   const summaryData = summary(state.expenses, state.members)
 
   return (
-    <main className="w-full h-screen bg-black overflow-hidden">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-2 h-full max-w-7xl mx-auto">
-        <LeftColumn
-          members={state.members}
-          balances={totalBalance}
-          onAddMember={handleAddMembers}
-          onDelMember={handleDeleteMember}
-        />
-        <div className="bg-black p-4 shadow-md rounded-xl text-gray-400">
+    <main className="w-full min-h-screen bg-black px-2 py-4">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full items-start">
+        <div className="sticky top-4 lg:col-span-3">
+          <LeftColumn
+            members={state.members}
+            balances={totalBalance}
+            onAddMember={handleAddMembers}
+            onDelMember={handleDeleteMember}
+          />
+        </div>
+        <div className="lg:col-span-6 bg-black shadow-md rounded-xl text-gray-400">
           <ExpenseForm
             members={state.members}
             onAddExpense={handleAddExpense}
@@ -97,9 +99,12 @@ export default function App() {
             members={state.members}
           />
         </div>
-        <RightColumn
-          summary={summaryData}
-        />
+        <div className="sticky top-4 lg:col-span-3">
+          <RightColumn
+            summary={summaryData}
+          />
+        </div>
+
       </div>
       <Toaster position="top-right" theme="dark" />
     </main>
