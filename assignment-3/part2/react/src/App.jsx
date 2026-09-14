@@ -5,6 +5,7 @@ import RightColumn from "./components/RightColumn";
 import ExpenseTable from "./components/Table";
 import ExpenseForm from "./components/Forum";
 import { Toaster, toast } from "sonner";
+
 export default function App() {
   const [state, setState] = useState(() => {
     const savedData = localStorage.getItem("bill-splitter-data")
@@ -18,7 +19,7 @@ export default function App() {
       expenses: [],
       filter: { memberId: null, search: "" },
     }
-  });
+  })
 
   useEffect(() => {
     localStorage.setItem("bill-splitter-data", JSON.stringify(state))

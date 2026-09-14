@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/select";
 import { useEffect, useState } from "react";
 import { Label } from "./ui/label";
-import { Toaster, toast } from "sonner";
+import { toast } from "sonner";
 
 export default function ExpenseForm({ members = [], onAddExpense }) {
   const [desc, setDesc] = useState("");
