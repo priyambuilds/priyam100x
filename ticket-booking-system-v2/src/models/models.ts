@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
-mongoose.connect("mongodb+srv://deypriyam807_db_user:****@cluster0.fzqkt7d.mongodb.net/todo");
+mongoose.connect("mongodb+srv://deypriyam807_db_user:9797@cluster0.fzqkt7d.mongodb.net/todo");
+
 const userSchema = new mongoose.Schema({
   username: {
     type: String,
@@ -29,10 +30,11 @@ const userSchema = new mongoose.Schema({
 const showSchema = new mongoose.Schema({
   movieName: {
     type: String,
-    required: true
+    required: true,
+    unique: true
   },
   showTime: {
-    type: Date,
+    type: String,
     required: true
   },
   ticketPrice: {
@@ -45,19 +47,19 @@ const showSchema = new mongoose.Schema({
     required: true,
     min: 0
   },
-}, { 
+}, {
   timestamps: true 
 });
 
 const bookingSchema = new mongoose.Schema({
   userId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
+    ref: 'UserModel',
     required: true
   },
   showId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Show',
+    ref: 'ShowModel',
     required: true
   },
   seats: {
