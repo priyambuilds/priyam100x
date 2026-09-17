@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 mongoose.connect("mongodb+srv://deypriyam807_db_user:9797@cluster0.fzqkt7d.mongodb.net/todo");
 
+
 const userSchema = new mongoose.Schema({
   username: {
     type: String,
@@ -21,10 +22,10 @@ const userSchema = new mongoose.Schema({
     required: true,
   },
   role: {
-      type: String,
-      enum: ['user', 'admin'],
-      default: 'user'
-    },
+    type: String,
+    enum: ['user', 'admin'],
+    default: 'user'
+  },
 }, {timestamps: true});
 
 const showSchema = new mongoose.Schema({
@@ -75,6 +76,15 @@ const bookingSchema = new mongoose.Schema({
 }, { 
   timestamps: true
 });
+
+const walletSchema = new mongoose.Schema({
+  balance: {
+    type: Number,
+    required: true,
+    default: 0,
+    min: 0
+  }
+})
 
 const UserModel = mongoose.model("UserModel", userSchema);
 const ShowModel = mongoose.model("ShowModel", showSchema);
