@@ -1,15 +1,7 @@
-# ticket-booking-system-v2
+## Booking system
+Booking being treated as one atomic operation that updates multiple documents.
+- Books tickets
+- Deducts wallet balance
+- Reduce show tickets
+- Recrods transaction
 
-To install dependencies:
-
-```bash
-bun install
-```
-
-To run:
-
-```bash
-bun run index.ts
-```
-
-This project was created using `bun init` in bun v1.4.2. [Bun](https://bun.com) is a fast all-in-one JavaScript runtime.
