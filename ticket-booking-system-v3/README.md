@@ -1,21 +1,15 @@
-## Booking system
-Booking being treated as one atomic operation that updates multiple documents.
-- Books tickets
-- Deducts wallet balance
-- Reduce show tickets
-- Records transaction
+# ticket-booking-system
 
-## Wallet system
-- Users can add money into their wallet
-- Booking tickets deducts moeny from their wallet
-- The transaction is recorded
+To install dependencies:
 
-## Transaction system
-- Every transaction is recoded
-- Users can see their own transactions
-- Admins can view all the transactions
+```bash
+bun install
+```
 
-The above features are implemented using mongoDB transactions and every transaction is atomic.
+To run:
 
-## Flow-
-- City -> Movie -> Date -> Theatre -> Time -> Seats
+```bash
+bun run index.ts
+```
+
+This project was created using `bun init` in bun v1.4.2. [Bun](https://bun.com) is a fast all-in-one JavaScript runtime.

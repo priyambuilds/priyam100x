@@ -31,46 +31,6 @@ const userSchema = new mongoose.Schema({
     },
 }, { timestamps: true });
 const showSchema = new mongoose.Schema({
-    movieId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "MovieModel",
-        required: true,
-        index: true
-    },
-    screenId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "ScreenModel",
-        required: true,
-        index: true,
-    },
-    theatreId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "TheatreModel",
-        required: true,
-        index: true,
-    },
-    cityId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "CityModel",
-        required: true,
-        index: true,
-    },
-    startsAt: {
-        type: Date,
-        required: true,
-        index: true
-    },
-    endsAt: {
-        type: Date,
-        required: true,
-        index: true
-    },
-    availableSeatsCount: {
-        
-    },
-    status: {
-
-    },
     movieName: {
         type: String,
         required: true,
@@ -176,98 +136,11 @@ export const transactionSchema = new mongoose.Schema({
     timestamps: true
 })
 
-const citySchema = new mongoose.Schema({
-    name: {
-        type: String,
-        unique: true,
-    },
-    active: {
-        type: Boolean,
-        default: true
-    }
-})
-const theatreSchema = new mongoose.Schema({
-    cityId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "CityModel",
-        required: true,
-        unique: true
-    },
-    name: {
-        type: String,
-        unique: true,
-        required: true
-    },
-        active: {
-        type: Boolean,
-        default: true
-    }
-}, {
-    timestamps: true
-})
-const screenSchema = new mongoose.Schema({
-    theatreId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "TheatreModel",
-        required: true
-    },
-    name: {
-        type: String,
-        unique: true,
-        required: true,
-    },
-    active: {
-        type: Boolean,
-        default: true
-    }
-},{
-    timestamps: true
-})
-const seatSchema = new mongoose.Schema({
-    screenId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "ScreenModel",
-        required: true
-    },
-    number: {
-        type: Number,
-        required: true
-    },
-    active: {
-        type: Boolean,
-        default: true
-    }
-},{
-    timestamps: true
-})
-const movieSchema = new mongoose.Schema({
-    name: {
-        type: String,
-        unique: true,
-        required: true
-    },
-    durationInMinutes: {
-        type: Number,
-        required: true
-    },
-    active: {
-        type: Boolean,
-        default: true
-    }
-},{
-    timestamps: true
-})
 
 const UserModel = mongoose.model("UserModel", userSchema);
 const ShowModel = mongoose.model("ShowModel", showSchema);
 const BookingModel = mongoose.model("BookingModel", bookingSchema);
 const WalletModel = mongoose.model("WalletModel", walletSchema);
 const TransactionModel = mongoose.model("TransactionModel", transactionSchema);
-const CityModel = mongoose.model("CityModel", citySchema);
-const TheatreModel = mongoose.model("TheatreModel", theatreSchema);
-const ScreenModel = mongoose.model("ScreenModel", screenSchema);
-const SeatModel = mongoose.model("SeatModel", seatSchema);
-const MovieModel = mongoose.model("MovieModel", movieSchema);
 
-
-export {UserModel, ShowModel, BookingModel, WalletModel, TransactionModel, CityModel, ScreenModel, TheatreModel, MovieModel};
+export {UserModel, ShowModel, BookingModel, WalletModel, TransactionModel};
