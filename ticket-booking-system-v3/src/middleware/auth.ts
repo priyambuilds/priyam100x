@@ -45,7 +45,11 @@ export const authMiddleWare = (req: Request, res: Response, next: NextFunction) 
                 data: []
             })
         }
-        
+         res.status(200).json({
+            result: true,
+            message: "Below is your token",
+            data: [{token}]
+        })
         next();
     } catch (e) {
         res.status(400).json({
