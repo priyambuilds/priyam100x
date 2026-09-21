@@ -68,7 +68,7 @@ export const createSeatsSchema = z.object({
 
 export const createMovieSchema = z.object({
     title: z.string().trim().min(1).max(30),
-    description: z.string().trim().max(200).optional(),
+    description: z.string().trim().max(200),
     durationMin: z.number().int().min(1).max(600)
 })
 

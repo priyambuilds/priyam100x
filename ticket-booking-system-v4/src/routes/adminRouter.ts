@@ -53,6 +53,12 @@ adminRouter.post("/showtimes", createShowTimeController)
 
 
 // GET ENDPOINTS
+// Get all theatres in a particular city
+adminRouter.get(
+    "/:cityId/theatres",
+    validateParams(cityIdParamsSchema),
+    getTheatreByIdController
+)
 // Get theatre details including it's screens
 adminRouter.get(
     "/theatres/:theatreId",
