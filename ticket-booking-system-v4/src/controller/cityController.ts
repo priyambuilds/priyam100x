@@ -7,7 +7,3 @@ export async function createCityController(req: Request, res: Response, next: Ne
 export async function getCitiesController(req: Request, res: Response, next: NextFunction) {
     
 }
-
-export async function getCitiesByIdController(req: Request, res: Response, next: NextFunction) {
-    
-}

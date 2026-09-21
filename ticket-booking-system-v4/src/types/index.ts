@@ -1,5 +1,40 @@
 import * as z from "zod";
 
+export const showtimeIdParamsSchema = z.object({
+    showtimeId: z.uuid()
+})
+export const showtimParamsSchema = z.object({
+    theatreId: z.uuid(),
+    movieId: z.uuid()
+})
+export const showtimeQuerySchema = z.object({
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must use YYYY-MM-DD format")
+})
+export const showtimeSeatsParamsSchema = z.object({
+    showtimeId: z.uuid()
+})
+export const cityIdParamsSchema = z.object({
+    cityId: z.uuid()
+})
+export const cityTheatreParamsSchema = z.object({
+    cityId: z.uuid()
+})
+export const theatreIdParamsSchema = z.object({
+    theatreId: z.uuid()
+})
+export const theatreScreenParamsSchema = z.object({
+  theatreId: z.uuid(),
+});
+export const screenIdParamsSchema = z.object({
+  screenId: z.uuid(),
+});
+export const movieIdParamsSchema = z.object({
+    movieId: z.uuid()
+})
+export const bookingIdParamsSchema = z.object({
+    bookingId: z.uuid()
+})
+
 export const signupSchema = z.object({
     username: z.string().trim().min(3).max(30).regex(/^[a-zA-Z0-9_]+$/, "username can only contain letters, numbers and underscores"),
     email: z.email(),
@@ -15,32 +50,12 @@ export const createCitySchema = z.object({
     name: z.string().trim().min(3).max(20)
 })
 
-export const cityIdParamsSchema = z.object({
-    cityId: z.uuid()
-})
-
 export const createTheatreSchema = z.object({
     name: z.string().trim().min(3).max(20)
 })
 
-export const cityTheatreParamsSchema = z.object({
-    cityId: z.uuid()
-})
-
-export const theatreIdParamsSchema = z.object({
-    theatreId: z.uuid()
-})
-
 export const createScreenSchema = z.object({
   name: z.string().trim().min(3).max(20),
-});
-
-export const theatreScreenParamsSchema = z.object({
-  theatreId: z.uuid(),
-});
-
-export const screenIdParamsSchema = z.object({
-  screenId: z.uuid(),
 });
 
 export const createSeatSchema = z.object({
@@ -57,10 +72,6 @@ export const createMovieSchema = z.object({
     durationMin: z.number().int().min(1).max(600)
 })
 
-export const movieIdParamsSchema = z.object({
-    movieId: z.uuid()
-})
-
 export const createShowTimeSchema = z.object({
     movieId: z.uuid(),
     screenId: z.uuid(),
@@ -72,27 +83,6 @@ export const createShowTimeSchema = z.object({
 }).refine((data) => data.endsAt > data.startsAt, {
     message: "endsAt must be after startsAt",
     path: ["endsAt"]
-})
-
-export const showtimeIdParamsSchema = z.object({
-    showtimeId: z.uuid()
-})
-
-export const cityMovieParamsSchema = z.object({
-    cityId: z.uuid()
-})
-
-export const showtimParamsSchema = z.object({
-    theatreId: z.uuid(),
-    movieId: z.uuid()
-})
-
-export const showtimeQuerySchema = z.object({
-    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must use YYYY-MM-DD format")
-})
-
-export const showtimeSeatsParamsSchema = z.object({
-    showtimeId: z.uuid()
 })
 
 export const createBookingSchema = z.object({
