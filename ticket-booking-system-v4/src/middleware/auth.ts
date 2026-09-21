@@ -18,7 +18,7 @@ if (!secret) {
 export const authMiddleWare = (req: Request, res: Response, next: NextFunction) => {
     const authHeader = req.headers.authorization
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
-        return res.status(400).json({
+        return res.status(401).json({
             result: false,
             message: "Malformend token",
             data: []
@@ -26,7 +26,7 @@ export const authMiddleWare = (req: Request, res: Response, next: NextFunction) 
     }
     const token = authHeader.split(" ")[1]
     if (!token || typeof token !== 'string') {
-        return res.status(400).json({
+        return res.status(401).json({
             result: false,
             message: "Malformend token",
             data: []
@@ -39,7 +39,7 @@ export const authMiddleWare = (req: Request, res: Response, next: NextFunction) 
             req.userId = decoded.userId
             req.role = decoded.role
         } else {
-            return res.status(400).json({
+            return res.status(401).json({
             result: false,
             message: "Malformed token",
             data: []

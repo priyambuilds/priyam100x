@@ -1,8 +1,8 @@
-import { type Request, type Response } from 'express';
+import { type Request, type Response, type NextFunction } from 'express';
 
-export const addWallerController = (req:Request, type: Response ) => {
+export const topUpWalletController = (req:Request, res: Response, next: NextFunction ) => {
 
 }
-export const getWalletController = (req:Request, type: Response ) => {
+export const getWalletController = (req:Request, res: Response, next: NextFunction ) => {
 
 }

@@ -1,5 +1,5 @@
-import { type Request, type Response } from 'express';
+import { type Request, type Response, type NextFunction } from 'express';
 
-export const getTransactionsController = (req:Request, type: Response ) => {
+export const getTransactionsController = (req:Request, res: Response, next: NextFunction ) => {
 
 }
