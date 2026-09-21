@@ -14,18 +14,3 @@ export async function createMovieService(
     })
 }
 
-export async function getMoviesService() {
-    return prisma.movie.findMany({
-        orderBy: {
-            title: "asc"
-        }
-    })
-}
-
-export async function getMoviesByIdService(movieId: string) {
-    return prisma.movie.findUnique({
-        where: {
-            id: movieId
-        }
-    })
-}
