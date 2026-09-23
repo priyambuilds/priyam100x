@@ -1,14 +1,17 @@
-import { type Request, type Response, type NextFunction } from 'express';
-import { getTransactionsService } from './service/transactionsService';
+import type { Request, Response, NextFunction } from "express";
+import { getTransactionService } from "./services/transactionService";
 
-export async function getTransactionsController (req: Request, res: Response, next: NextFunction) {
-  try {
-      const transactions = await getTransactionsService(req.userId)
-      return res.status(200).json({
-          success: true,
-          data: transactions,
-      })
-  } catch (error) {
-    next(error);
-  }
+export async function transactionController(req: Request, res: Response, next: NextFunction) {
+    try {
+        const userId = req.userId
+        const role = req.role
+        const transaction = await getTransactionService(userId, role)
+        res.status(200).json({
+            success: true,
+            message: "Below are all the transactions",
+            data: [{transaction}]
+        })
+    } catch (e) {
+        next(e)
+    }
 }

@@ -1,38 +1,31 @@
-import { type Request, type Response, type NextFunction } from 'express';
-import { createBookingService, getMyBookingsService } from './service/bookingService';
+import type { Request, Response, NextFunction } from "express";
+import { createBookingService, getBookingsService } from "./services/bookingService";
 
-export async function createBookingController (req:Request, res: Response, next: NextFunction ) {
+export async function bookingController(req: Request, res: Response, next: NextFunction) {
     try {
-        const booking = await createBookingService(
-            req.userId,
-            req.body.showtimeId,
-            req.body.seatNumbers
-        )
-        return res.status(200).json({
+        const userId = req.userId
+        const {showtimeId} = req.params
+        const {seatNumbers} = req.body
+        const booking = await createBookingService(userId, showtimeId as string, seatNumbers)
+        res.status(200).json({
             success: true,
-            message: "booking created successfully",
+            message: "Booking successful",
             data: [{booking}]
         })
     } catch (e) {
         next(e)
     }
 }
-
-export async function getMyBookingsController (req: Request, res: Response, next: NextFunction) {
+export async function getBookingsController(req: Request, res: Response, next: NextFunction) {
     try {
-        const booking = await getMyBookingsService(req.userId)
-        return res.status(200).json({
+        const userId = req.userId
+        const booking = await getBookingsService(userId)
+        res.status(200).json({
             success: true,
-            message: "Below are your bookings",
+            message: "Below are all your bookings",
             data: [{booking}]
         })
     } catch (e) {
         next(e)
     }
-}
-export const getBookingByIdController = (req: Request, res: Response, next: NextFunction) => {
-    
-}
-export const cancelBookingController = (req: Request, res: Response, next: NextFunction) => {
-    
 }

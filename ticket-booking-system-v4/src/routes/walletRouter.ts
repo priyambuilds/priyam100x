@@ -1,9 +1,7 @@
 import express from "express";
-import { topUpWalletController, getWalletController } from "../controller/walletController";
-import { authMiddleWare } from "../middleware/auth";
-import { validateBody } from "../middleware/validateBody";
-import { walletTopUpSchema } from "../types";
+import { authMiddleWare } from "../middlewares/auth";
 
-export const walletRouter = express.Router()
-walletRouter.post("/top-up", authMiddleWare, validateBody(walletTopUpSchema), topUpWalletController)
-walletRouter.get("/", authMiddleWare, getWalletController)
+export const walletRouter = express.Router();
+
+walletRouter.post("/topup", authMiddleWare)
+walletRouter.get("/", authMiddleWare)
