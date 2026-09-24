@@ -3,7 +3,6 @@ import type { UserRole } from "../../../generated/prisma/enums.ts"
 
 export async function signupService(username: string, email: string, password: string, role: UserRole) {
     const passwordHash = await Bun.password.hash(password)
-    const userExists = await prisma.user.findFirst()
     return prisma.user.create({
         data: {
             username,
