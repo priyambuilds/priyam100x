@@ -1,0 +1,30 @@
+{
+  "name": "ticket-booking-system-elysia-migration",
+  "version": "1.0.50",
+  "scripts": {
+    "test": "bunx prisma db push --force-reset && bun test src/tests",
+    "dev": "bun run --watch src/index.ts",
+    "type": "module"
+  },
+  "dependencies": {
+    "@elysia/bearer": "^1.4.4",
+    "@elysia/cors": "^1.4.2",
+    "@elysia/eden": "^1.4.10",
+    "@elysia/jwt": "^1.4.2",
+    "@elysia/openapi": "^1.4.16",
+    "@prisma/adapter-pg": "^7.10.0",
+    "@prisma/client": "7",
+    "add": "^2.0.9",
+    "bun": "^1.4.2",
+    "dotenv": "^18.0.4",
+    "elysia": "^1.4.30",
+    "pg": "^8.23.0"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.23.1",
+    "bun-types": "latest",
+    "prisma": "^7.10.0",
+    "prismabox": "^1.1.26"
+  },
+  "module": "src/index.js"
+}
