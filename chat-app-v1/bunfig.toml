@@ -1,0 +1,4 @@
+[test]
+# Only the backend suite: client/ has its own Vitest suite (cd client && bun run test).
+root = "./tests"
+preload = ["./tests/setup.ts"]

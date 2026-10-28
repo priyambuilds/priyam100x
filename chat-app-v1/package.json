@@ -1,0 +1,36 @@
+{
+  "name": "chat-app-v1",
+  "version": "1.0.50",
+  "scripts": {
+    "dev": "bun run --watch src/main.ts",
+    "start": "bun run src/main.ts",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit",
+    "seed": "bun run seed.ts",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:generate": "prisma generate",
+    "services:up": "docker compose up -d",
+    "openapi": "bun scripts/gen-openapi.ts",
+    "services:cluster": "docker compose --profile cluster up -d redis-cluster",
+    "lb:up": "docker compose --profile lb up -d --build",
+    "lb:down": "docker compose --profile lb down"
+  },
+  "dependencies": {
+    "@elysiajs/eden": "^1.4.9",
+    "@elysiajs/jwt": "^1.4.2",
+    "@elysiajs/openapi": "^1.4.16",
+    "@prisma/adapter-pg": "^7.10.0",
+    "@prisma/client": "7",
+    "dotenv": "^18.0.5",
+    "elysia": "^1.4.30",
+    "ioredis": "^6.0.0",
+    "pg": "^8.23.1"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.23.1",
+    "bun-types": "latest",
+    "prisma": "^7.10.0"
+  },
+  "type": "module"
+}

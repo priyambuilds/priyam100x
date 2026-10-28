@@ -1,0 +1,773 @@
+{
+  "info": {
+    "title": "Chat API",
+    "description": "Real-time chat backend: HTTP API + one WebSocket per client (`GET /ws`). The WebSocket protocol is documented in docs/PROTOCOL.md.\n\nFlow: `POST /auth/login` -> `POST /ws/ticket` -> `GET /ws?ticket=...`.",
+    "version": "1.0.0"
+  },
+  "tags": [
+    {
+      "name": "Auth",
+      "description": "Accounts, tokens and WebSocket tickets"
+    },
+    {
+      "name": "Users",
+      "description": "User search and presence"
+    },
+    {
+      "name": "Rooms",
+      "description": "Group + direct rooms, membership, history, read receipts"
+    },
+    {
+      "name": "WebSocket",
+      "description": "Real-time gateway"
+    },
+    {
+      "name": "Ops",
+      "description": "Health and metrics"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {}
+  },
+  "openapi": "3.1.2",
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": [
+          "Ops"
+        ],
+        "summary": "Liveness",
+        "operationId": "getHealth"
+      }
+    },
+    "/ready": {
+      "get": {
+        "tags": [
+          "Ops"
+        ],
+        "summary": "Readiness: fails during shutdown so the load balancer stops routing here",
+        "operationId": "getReady"
+      }
+    },
+    "/metrics": {
+      "get": {
+        "tags": [
+          "Ops"
+        ],
+        "summary": "Per-instance counters and gauges",
+        "operationId": "getMetrics"
+      }
+    },
+    "/auth/register": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Create an account and get a bearer token",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "username",
+                  "password"
+                ],
+                "properties": {
+                  "username": {
+                    "minLength": 3,
+                    "maxLength": 32,
+                    "pattern": "^[a-zA-Z0-9_]+$",
+                    "type": "string"
+                  },
+                  "password": {
+                    "minLength": 8,
+                    "maxLength": 72,
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "username",
+                  "password"
+                ],
+                "properties": {
+                  "username": {
+                    "minLength": 3,
+                    "maxLength": 32,
+                    "pattern": "^[a-zA-Z0-9_]+$",
+                    "type": "string"
+                  },
+                  "password": {
+                    "minLength": 8,
+                    "maxLength": 72,
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "username",
+                  "password"
+                ],
+                "properties": {
+                  "username": {
+                    "minLength": 3,
+                    "maxLength": 32,
+                    "pattern": "^[a-zA-Z0-9_]+$",
+                    "type": "string"
+                  },
+                  "password": {
+                    "minLength": 8,
+                    "maxLength": 72,
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "operationId": "postAuthRegister"
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Exchange username + password for a bearer token",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "username",
+                  "password"
+                ],
+                "properties": {
+                  "username": {
+                    "minLength": 3,
+                    "maxLength": 32,
+                    "pattern": "^[a-zA-Z0-9_]+$",
+                    "type": "string"
+                  },
+                  "password": {
+                    "minLength": 8,
+                    "maxLength": 72,
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "username",
+                  "password"
+                ],
+                "properties": {
+                  "username": {
+                    "minLength": 3,
+                    "maxLength": 32,
+                    "pattern": "^[a-zA-Z0-9_]+$",
+                    "type": "string"
+                  },
+                  "password": {
+                    "minLength": 8,
+                    "maxLength": 72,
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "username",
+                  "password"
+                ],
+                "properties": {
+                  "username": {
+                    "minLength": 3,
+                    "maxLength": 32,
+                    "pattern": "^[a-zA-Z0-9_]+$",
+                    "type": "string"
+                  },
+                  "password": {
+                    "minLength": 8,
+                    "maxLength": 72,
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "operationId": "postAuthLogin"
+      }
+    },
+    "/me": {
+      "get": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Current user",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "operationId": "getMe"
+      }
+    },
+    "/ws/ticket": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Get a one-time ticket for `GET /ws?ticket=...`",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "operationId": "postWsTicket"
+      }
+    },
+    "/users/": {
+      "get": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Search users by username (for starting DMs / adding members)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "maxLength": 32,
+              "type": "string"
+            }
+          }
+        ],
+        "operationId": "getUsers"
+      }
+    },
+    "/users/{id}/presence": {
+      "get": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Is this user online?",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "operationId": "getUsersByIdPresence"
+      }
+    },
+    "/rooms/": {
+      "get": {
+        "tags": [
+          "Rooms"
+        ],
+        "summary": "My rooms with unread counts and last message",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "operationId": "getRooms"
+      },
+      "post": {
+        "tags": [
+          "Rooms"
+        ],
+        "summary": "Create a group room (you become OWNER)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name"
+                ],
+                "properties": {
+                  "name": {
+                    "minLength": 1,
+                    "maxLength": 100,
+                    "type": "string"
+                  },
+                  "memberIds": {
+                    "maxItems": 200,
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name"
+                ],
+                "properties": {
+                  "name": {
+                    "minLength": 1,
+                    "maxLength": 100,
+                    "type": "string"
+                  },
+                  "memberIds": {
+                    "maxItems": 200,
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name"
+                ],
+                "properties": {
+                  "name": {
+                    "minLength": 1,
+                    "maxLength": 100,
+                    "type": "string"
+                  },
+                  "memberIds": {
+                    "maxItems": 200,
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "operationId": "postRooms"
+      }
+    },
+    "/rooms/dm": {
+      "post": {
+        "tags": [
+          "Rooms"
+        ],
+        "summary": "Start (or fetch) a 1:1 direct message room",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "userId"
+                ],
+                "properties": {
+                  "userId": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "userId"
+                ],
+                "properties": {
+                  "userId": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "userId"
+                ],
+                "properties": {
+                  "userId": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "operationId": "postRoomsDm"
+      }
+    },
+    "/rooms/{roomId}": {
+      "get": {
+        "tags": [
+          "Rooms"
+        ],
+        "summary": "Room details, members, roles and presence",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "roomId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "operationId": "getRoomsByRoomId"
+      }
+    },
+    "/rooms/{roomId}/messages": {
+      "get": {
+        "tags": [
+          "Rooms"
+        ],
+        "summary": "Message history, newest first (keyset pagination)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "roomId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "before",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "minimum": 1,
+              "description": "Return messages with seq < before",
+              "anyOf": [
+                {
+                  "format": "integer",
+                  "default": 0,
+                  "type": "string"
+                },
+                {
+                  "minimum": 1,
+                  "description": "Return messages with seq < before",
+                  "type": "integer"
+                }
+              ]
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "anyOf": [
+                {
+                  "format": "integer",
+                  "default": 0,
+                  "type": "string"
+                },
+                {
+                  "minimum": 1,
+                  "maximum": 100,
+                  "type": "integer"
+                }
+              ]
+            }
+          }
+        ],
+        "operationId": "getRoomsByRoomIdMessages"
+      }
+    },
+    "/rooms/{roomId}/members": {
+      "post": {
+        "tags": [
+          "Rooms"
+        ],
+        "summary": "Add a member (OWNER/ADMIN, group rooms)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "roomId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "userId"
+                ],
+                "properties": {
+                  "userId": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "userId"
+                ],
+                "properties": {
+                  "userId": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "userId"
+                ],
+                "properties": {
+                  "userId": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "operationId": "postRoomsByRoomIdMembers"
+      }
+    },
+    "/rooms/{roomId}/members/{userId}": {
+      "delete": {
+        "tags": [
+          "Rooms"
+        ],
+        "summary": "Leave a room (use your own id) or remove a member",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "roomId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "operationId": "deleteRoomsByRoomIdMembersByUserId"
+      }
+    },
+    "/rooms/{roomId}/read": {
+      "post": {
+        "tags": [
+          "Rooms"
+        ],
+        "summary": "Advance my read receipt",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "roomId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "seq"
+                ],
+                "properties": {
+                  "seq": {
+                    "minimum": 0,
+                    "anyOf": [
+                      {
+                        "format": "integer",
+                        "default": 0,
+                        "type": "string"
+                      },
+                      {
+                        "minimum": 0,
+                        "type": "integer"
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "seq"
+                ],
+                "properties": {
+                  "seq": {
+                    "minimum": 0,
+                    "anyOf": [
+                      {
+                        "format": "integer",
+                        "default": 0,
+                        "type": "string"
+                      },
+                      {
+                        "minimum": 0,
+                        "type": "integer"
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "seq"
+                ],
+                "properties": {
+                  "seq": {
+                    "minimum": 0,
+                    "anyOf": [
+                      {
+                        "format": "integer",
+                        "default": 0,
+                        "type": "string"
+                      },
+                      {
+                        "minimum": 0,
+                        "type": "integer"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "operationId": "postRoomsByRoomIdRead"
+      }
+    },
+    "/ws": {
+      "ws": {
+        "summary": "WebSocket gateway (not representable in OpenAPI)",
+        "description": "Upgrade with `GET /ws?ticket=<ticket from POST /ws/ticket>`. Frames are JSON discriminated by `type`; see docs/PROTOCOL.md.",
+        "tags": [
+          "WebSocket"
+        ],
+        "parameters": [
+          {
+            "name": "ticket",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "operationId": "wsWs"
+      }
+    }
+  }
+}
