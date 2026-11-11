@@ -1,0 +1,106 @@
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Outcome {
+  YES
+  NO
+}
+
+enum LedgerType {
+  ONRAMP
+  MARKET_CREATED
+  BET
+  PAYOUT
+  REFUND
+}
+
+model User {
+  id       String @id @default(uuid())
+  username String @unique
+  password String
+
+  account Account?
+  markets Market[]
+  bets    Bet[]
+
+  createdAt DateTime @default(now())
+}
+
+model Market {
+  id                String    @id @default(uuid())
+  title             String
+  description       String?
+  side              Outcome
+  initialWager      Int
+  remainingCapacity Int
+  exp               DateTime
+  resolution        Outcome?
+  resolvedAt        DateTime?
+
+  creatorId String
+  user      User   @relation(fields: [creatorId], references: [id])
+
+  escrow Account?
+  bet    Bet[]
+  ledger Ledger[]
+
+  createdAt DateTime @default(now())
+}
+
+model Bet {
+  id     String @id @default(uuid())
+  amount Int
+
+  userId   String
+  marketId String
+  user     User   @relation(fields: [userId], references: [id])
+  market   Market @relation(fields: [marketId], references: [id])
+
+  ledgers Ledger[]
+
+  createdAt DateTime @default(now())
+}
+
+model Account {
+  id      String @id @default(uuid())
+  balance Int    @default(0)
+
+  userId   String? @unique
+  marketId String? @unique
+  user     User?   @relation(fields: [userId], references: [id])
+  market   Market? @relation(fields: [marketId], references: [id])
+
+  outgoing Ledger[] @relation("TransferFrom")
+  incoming Ledger[] @relation("TransferTo")
+
+  createdAt DateTime @default(now())
+}
+
+model Ledger {
+  id         String     @id @default(uuid())
+  amount     Int
+  type       LedgerType
+  externalId String?    @unique
+
+  fromAccountId String
+  toAccountId   String
+  from          Account @relation("TransferFrom", fields: [fromAccountId], references: [id])
+  to            Account @relation("TransferTo", fields: [toAccountId], references: [id])
+
+  marketId String?
+  betId    String?
+
+  market Market? @relation(fields: [marketId], references: [id])
+  bet    Bet?    @relation(fields: [betId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@unique([betId, type]) // Each bet has only BET and one PAYOUT transfer
+}

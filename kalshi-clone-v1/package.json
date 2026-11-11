@@ -1,0 +1,26 @@
+{
+  "name": "kalshi-clone",
+  "version": "1.0.50",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "bun run --watch src/index.ts"
+  },
+  "dependencies": {
+    "@elysia/bearer": "^1.4.4",
+    "@elysia/eden": "^1.4.10",
+    "@elysia/jwt": "^1.4.2",
+    "@elysia/openapi": "^1.4.16",
+    "@prisma/adapter-pg": "^7.10.1",
+    "@prisma/client": "7",
+    "dotenv": "^18.0.9",
+    "elysia": "latest",
+    "pg": "^8.23.1"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.23.1",
+    "bun-types": "latest",
+    "prisma": "^7.10.1"
+  },
+  "module": "src/index.js"
+}

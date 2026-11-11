@@ -1,0 +1,145 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Outcome {
+  YES
+  NO
+}
+
+enum LedgerType {
+  ONRAMP
+  REFUND
+  BET
+  PAYOUT
+  MARKET_CREATED
+}
+
+model User {
+  id String @id @default(uuid())
+  username String @unique
+  password String
+
+  market Market[]
+  bets Bets[]
+  // One-to-One relationship A user has at most one wallet.
+  account Account?
+
+  createdAt DateTime @default(now())
+}
+
+model Market {
+  id String @id @default(uuid())
+  title String
+  description String?
+  side Outcome
+  initialWager Int
+  // Why remainingCapacity exists instead of computing it
+  // This is O(n), instead of scanning through 1000s of bets,
+  // We store the remainingCap directly in the market 
+  remainingCapacity Int
+  exp DateTime
+  resolution Outcome?
+  resolvedAt DateTime?
+  
+  creatorId String
+  user User @relation(fields: [creatorId], references:[id])
+
+  // The market's escrow wallet — holds all the locked money (creator's wager + bettors' money) until resolution
+  escrow Account?
+  bets Bets[]
+  ledger Ledger[]
+  
+  createdAt DateTime @default(now())
+}
+
+//Why does a Bet not store the side?
+// Because in this simplified model, bettors can ONLY bet on the opposite side of the creator. 
+// If the creator chose YES, every bettor is automatically on NO. 
+// There's no choice to store — it's implicit.
+model Bets {
+  id String @id @default(uuid())
+  amount Int
+
+  userId String
+  marketId String 
+  market Market @relation(fields: [marketId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+
+  // A single bet generates multiple ledger entries over its lifecycle
+  ledger Ledger[]
+
+  createdAt DateTime @default(now())
+}
+// The single Account table serves three purposes: user wallets, 
+// market escrows, and the external money source.
+// This is a polymorphic wallet — one table serves three different purposes:
+// ┌────────────────────────────────────────────────────────────────┐
+// │                        Account Table                           │
+// ├──────────┬──────────┬───────────┬──────────────────────────────┤
+// │ id       │ userId   │ marketId  │ What is this?                │
+// ├──────────┼──────────┼───────────┼──────────────────────────────┤
+// │ "ext..." │ null     │ null      │ 🏦 External Bank (money mint)│
+// │ "aaa..." │ "user1"  │ null      │ 👤 User 1's personal wallet  │
+// │ "bbb..." │ "user2"  │ null      │ 👤 User 2's personal wallet  │
+// │ "ccc..." │ null     │ "mkt1"    │ 🔒 Market 1's escrow         │
+// │ "ddd..." │ null     │ "mkt2"    │ 🔒 Market 2's escrow         │
+// └──────────┴──────────┴───────────┴──────────────────────────────┘
+model Account {
+  id String @id @default(uuid())
+  // The current balance — a denormalized cache. In theory you could compute it by summing 
+  // all incoming and outgoing ledger entries, but that'd be slow. 
+  // Keeping it updated atomically in the same transaction is fast + safe
+  balance Int @default(0)
+  // If set, this account belongs to that user. @unique ensures a user can only have ONE wallet. 
+  // ? (nullable) because not all accounts belong to users
+  userId String? @unique
+  // If set, this account is the escrow for that market.
+  marketId String? @unique
+  user User? @relation(fields: [userId], references: [id])
+  market Market? @relation(fields: [marketId], references: [id])
+
+  outgoing Ledger[] @relation("TransferFrom")
+  incoming Ledger[] @relation("TransferTo")
+
+  createdAt DateTime @default(now())
+}
+
+// we are building a double-entry accounting system 
+// Every money movement is a transfer between accounts 
+// (user wallets, market escrows, and a special "external" bank account),
+// with a Ledger tracking every flow.
+// Every movement is a Ledger entry that says "₹X moved FROM account A TO account B"
+// The sum of all ledger entries for an account should always equal its balance
+// Money is never created out of thin air — it always comes from somewhere (even onramp comes from the "external" account)
+model Ledger {
+  id String @id @default(uuid())
+  amount Int
+  type LedgerType
+  externalId String? @unique
+
+  fromAccountId String
+  toAccountId String
+  from Account @relation("TransferFrom",fields: [fromAccountId], references: [id])
+  to Account @relation("TransferTo",fields: [toAccountId], references: [id])
+
+  marketId String?
+  betId String?
+  market Market? @relation(fields: [marketId], references: [id])
+  bet Bets? @relation(fields: [betId], references: [id])
+
+  createdAt DateTime @default(now())
+  // This is subtle and important. A single bet can have multiple ledger entries, but only one per type:
+  // Allowed	betId	     type
+  // ✅	     "bet-1"	   BET
+  // ✅	     "bet-1"	   PAYOUT
+  // ❌	     "bet-1"	   BET ← duplicate!
+  // ❌	     "bet-1"	   PAYOUT ← duplicate!
+  // This prevents double-processing. If your resolve code accidentally runs twice, the second attempt to create a PAYOUT ledger entry for the same bet will fail with a unique constraint violation — the database itself stops the double payout.
+  @@unique([betId, type]) // Each bet has only BET and one PAYOUT transfer
+}
