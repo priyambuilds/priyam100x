@@ -1,0 +1,290 @@
+// 1. Alice onramps $50:
+//    Transfer: [CLEARINGHOUSE] ──($50)──► [Alice Cash Pocket]
+
+// 2. Alice splits $10 (Mints 10 YES + 10 NO):
+//    Transfer 1: [Alice Cash]           ──($10)──► [Market Escrow Cash]
+//    Transfer 2: [CLEARINGHOUSE]        ──(10)───► [Alice YES Pocket]
+//    Transfer 3: [CLEARINGHOUSE]        ──(10)───► [Alice NO Pocket]
+//    -> Market.totalIssued is now 10.
+//    -> Market Escrow holds $10.00 cash.
+
+// 3. Alice wants to sell her 10 YES tickets:
+//    Alice creates an Order: SELL 10 YES @ 55¢.
+//    -> Alice's YES Pocket: locked += 10. (She can't sell them twice!)
+
+// 4. Bob comes in and wants to BUY 10 YES @ 55¢:
+//    Bob has $50 in his cash pocket.
+//    MATCH! A Fill is created:
+//    -> Transfer 1: [Bob Cash]  ──($5.50)──► [Alice Cash]
+//    -> Transfer 2: [Alice YES] ──(10)─────► [Bob YES]
+
+// 5. Match finishes: Real Madrid WINS!
+//    Resolution = YES.
+//    Bob holds 10 YES tickets. Each YES ticket redeems for $1.00 from Escrow:
+//    -> Transfer: [Market Escrow Cash] ──($10.00)──► [Bob Cash]
+//    -> Escrow balance drops to $0.
+//    -> Bob turned $5.50 into $10.00!
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum Outcome {
+  YES
+  NO
+}
+
+enum LedgerType {
+  PAYOUT
+  REFUND
+  MARKET_CREATED
+}
+
+enum OrderStatus {
+  OPEN
+  PARTIALLY_FILLED
+  FILLED
+  CANCELLED
+}
+
+enum FillKind {
+  TRANSFER
+  MINT
+}
+
+enum MarketStatus {
+  OPEN
+  CLOSED
+  RESOLVED
+}
+
+enum MarketResolution {
+  PENDING
+  YES
+  NO
+}
+
+enum TransactionStatus {
+  ONRAMP
+  SPLIT
+  MERGE
+  PAYOUT
+  BUT
+  SELL
+  LOCK
+}
+
+enum AccountType {
+  USER_WALLET
+  USER_POSITION
+  MARKET_ESCROW
+  CLEARINGHOUSE
+}
+
+enum TransferType {
+  ONRAMP
+  SPLIT
+  MERGE
+  TRADE_CASH
+  TRADE_CONTRACT
+  PAYOUT
+  REFUND
+}
+
+enum OrderSide {
+  BUY
+  SELL
+}
+
+model User {
+  id       String @id @default(uuid())
+  username String @unique
+  password String
+  role     Role   @default(USER)
+
+  market   Market[]
+  orders   Order[]
+  accounts Account[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Market {
+  id          String @id @default(uuid())
+  title       String
+  description String?
+  creatorId   String
+  creator     User   @relation(fields: [creatorId], references: [id])
+
+  // How many pairs of YES/NO tickets exist in the world right now. 
+  // If 100 YES and 100 NO tickets exist, totalIssued = 100.
+  totalIssued Int              @default(0) // total paired contracts issued
+  status      MarketStatus     @default(OPEN)
+  resolution  MarketResolution @default(PENDING)
+  expiry      DateTime
+  resolvedAt  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orders    Order[]
+  accounts  Account[]
+  transfers Transfer[]
+  fills     Fill[]
+}
+
+// Think of an Account as a labeled pocket. In this exchange, you can hold two different things:
+// 1. Money
+// 2. Contracts (YES or NO tickets for a specific match)
+
+// So we use the Account table to represent 4 different kinds of pockets:
+// | Pocket Type (`AccountType`) | Who owns it? | What is inside it? 
+// | ---                         | ---          | ---                
+// | `USER_WALLET`               | Alice        | Alice's cash (e.g. $100)           
+// | `USER_POSITION` (YES)       | Alice        | Alice's Real Madrid YES tickets (e.g. 10 tickets) 
+// | `USER_POSITION` (NO)        | Alice        | Alice's Real Madrid NO tickets (e.g. 5 tickets) 
+// | `MARKET_ESCROW`             | The Market   | The locked cash holding the prize money 
+// | `CLEARINGHOUSE`             | The System   | The "ticket printer" (creates and destroys tickets) 
+model Account {
+  id   String      @id @default(uuid())
+  type AccountType
+
+  // Optional foreign keys for different types of accounts
+  userId   String?
+  user     User?    @relation(fields: [userId], references: [id])
+  marketId String?
+  market   Market?  @relation(fields: [marketId], references: [id])
+  outcome  Outcome? // Only set for USER_POSITION account (YES / NO)
+
+  // What are balance and locked inside Account?
+  // If Alice has $100 in her USER_WALLET:
+
+  // balance = 10000 (10,000 cents = $100.00)
+  //locked = 0
+
+  // Now Alice puts in an order: "I want to buy 10 YES tickets at 60¢ each". That costs $6.00 (600 cents). The system immediately does:
+
+  // locked = 600
+  // Available to spend = balance - locked = $94.00
+
+  // Why? So Alice cannot spend that same $6.00 somewhere else while her order is waiting! Her money is safely reserved in her pocket.
+  balance Int @default(0)
+  locked  Int @default(0)
+
+  outgoingTransfers Transfer[] @relation("transferFrom")
+  incomingTransfers Transfer[] @relation("transferTo")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // constraints:
+  // 1. A user has one WALLET account
+  // 2. A user has atmost one POSITION account per market per outcome
+  @@unique([userId, marketId, type, outcome])
+}
+
+// Transfer — Moving the Value (Double-Entry Bookkeeping)
+// Whenever anything moves in the entire system, a Transfer record is written:
+// FROM Account A  ───[ Amount ]───►  TO Account B
+
+// Every single trade creates two transfers:
+// Money Transfer: Alice's cash pocket → Bob's cash pocket ($2.40).
+// Contract Transfer: Bob's YES pocket → Alice's YES pocket (4 tickets).
+model Transfer {
+  id     String       @id @default(uuid())
+  type   TransferType
+  amount Int
+
+  fromAccountId String
+  transferFrom  Account @relation("transferFrom", fields: [fromAccountId], references: [id])
+  toAccountId   String
+  transferTo    Account @relation("transferTo", fields: [toAccountId], references: [id])
+
+  marketId String?
+  market   Market? @relation(fields: [marketId], references: [id])
+
+  orderId String?
+  order   Order?   @relation(fields: [orderId], references: [id])
+
+  fillId String?
+  fill   Fill?    @relation(fields: [fillId], references: [id])
+
+  createdAt DateTime @default(now())
+}
+
+//"I want to BUY 10 YES contracts for at most 60¢ each."
+
+// - side: Are you buying or selling? (BUY or SELL)
+// - outcome: Which ticket? (YES or NO)
+// - price: 60 (cents)
+// - quantity: 10
+// - remainingQuantity: 10 (none filled yet)
+// - status: OPEN
+
+// If Bob comes along and sells her 4 contracts:
+// remainingQuantity becomes 6
+// status becomes PARTIALLY_FILLED
+// When all 10 are filled, status becomes FILLED.
+model Order {
+  id       String @id @default(uuid())
+  marketId String
+  market   Market @relation(fields: [marketId], references: [id])
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  side              OrderSide
+  outcome           Outcome
+  price             Int // Limit price
+  quantity          Int // Initial order quantity
+  remainingQuantity Int // Quantity of order yet to be filled
+  status            OrderStatus @default(OPEN)
+
+  makerFills Fill[]     @relation("makerOrder")
+  takerFills Fill[]     @relation("takerOrder")
+  transfers  Transfer[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  orderId   String?
+}
+
+// When Alice’s BUY order meets Bob’s SELL order, they shake hands. That handshake is recorded in a Fill:
+// Fill:
+// - Maker: Bob (his order was waiting on the board)
+// - Taker: Alice (her order just came in)
+// - Price: 60¢
+// - Quantity: 4 tickets
+// - Kind: TRANSFER (existing tickets moved from Bob to Alice)
+// A Fill is a permanent history record: Who traded with whom, at what price, and how many shares?
+model Fill {
+  id       String @id @default(uuid())
+  marketId String
+  market   Market @relation(fields: [marketId], references: [id])
+
+  makerOrderId String
+  makerOrder   Order  @relation("makerOrder", fields: [makerOrderId], references: [id])
+
+  takerOrderId String
+  takerOrder   Order  @relation("takerOrder", fields: [takerOrderId], references: [id])
+
+  kind     FillKind
+  outcome  Outcome
+  price    Int
+  quantity Int
+
+  transfers Transfer[]
+
+  createdAt DateTime @default(now())
+}
