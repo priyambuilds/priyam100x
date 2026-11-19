@@ -1,7 +1,13 @@
-import { Elysia } from "elysia";
+import "dotenv/config"
 
-const app = new Elysia().get("/", () => "Hello Elysia").listen(3000);
+import { app } from "./app"
 
-console.log(
-  `🦊 Elysia is running at ${app.server?.hostname}:${app.server?.port}`
-);
+app.listen(3000)
+
+console.log(`Server running at http://${app.server?.hostname}:${app.server?.port}`)
+
+
+// The separation is:
+// - app.ts defines the application.
+// - index.ts starts the network server.
+// That will also let us test the application later without opening a listening port.

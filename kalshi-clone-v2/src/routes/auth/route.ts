@@ -6,10 +6,10 @@ import { signinSchema, signupSchema } from "./types"
 export const authRoutes = new Elysia({ prefix: "/auth" })
   .use(useJwtPlugin)
   .post(
-    "signup",
+    "/signup",
     async ({ body, status }) => {
       const user = await signupService(body.username, body.password)
-      return status(201, {
+      return status(200, {
         success: true,
         message: "Account created successfully,",
         data: user,

@@ -1,36 +1,61 @@
-import { Elysia } from "elysia"
-import { createMarketService, getMarketByIdService, getMarketsService } from "./service"
+import Elysia from "elysia"
+import { createMarketService, getMarketByIdService, getMarketService, mergeService, splitService } from "./service"
+import { createMarketSchema, marketParamsSchema, mergeSchema, splitSchema } from "./types"
 import { useAuthPlugin } from "../../plugins/auth"
-import { createMarketSchema } from "./types"
 
 export const marketRoutes = new Elysia({ prefix: "/market" })
-  .get("/", async ({ status }) => {
-    const data = await getMarketsService()
-    return status(201, {
+  .get("", async ({ status }) => {
+    const data = await getMarketService()
+    return status(200, {
       success: true,
       data,
     })
   })
-  .get("/:marketId", async ({ params, status }) => {
-    const data = await getMarketByIdService(params.marketId)
-    return status(201, {
-      success: true,
-      data,
-    })
-  })
+  .get(
+    "/:marketId",
+    async ({ status, params }) => {
+      const data = await getMarketByIdService(params.marketId)
+      return status(200, {
+        success: true,
+        data,
+      })
+    },
+    { params: marketParamsSchema },
+  )
   .use(useAuthPlugin)
   .post(
-    "/",
-    async ({ userId, body, status }) => {
-      const data = await createMarketService(userId, body.title, body.description, body.expiry)
+    "",
+    async ({ status, userId, body }) => {
+      const data = await createMarketService(userId, body)
       return status(201, {
         success: true,
-        message: "Market created successfully",
+        data,
+      })
+    },
+    { body: createMarketSchema },
+  )
+  .post(
+    "/:marketId/split",
+    async ({ userId, body, status, params }) => {
+      const data = await splitService(userId, params.marketId, body.quantity, body.requestId)
+      return status(data.replayed ? 200 : 201, {
+        succes: true,
         data,
       })
     },
     {
-      body: createMarketSchema,
+      params: marketParamsSchema,
+      body: splitSchema,
     },
-)
-
+  )
+  .post(
+    "/:marketId/merge",
+    async ({ userId, body, params, status }) => {
+      const data = await mergeService(userId, params.marketId, body.quantity, body.requestId)
+      return status(data.replayed ? 200 : 201, {
+        success: true,
+        data,
+      })
+    },
+    { body: mergeSchema, params: marketParamsSchema },
+  )

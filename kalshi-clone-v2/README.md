@@ -15,7 +15,7 @@ But they can also sell for a profit before the result. If hte person sells 10 at
 
 The exchange's job is to cordinate these purchases and sales, preserve ownership and cash, and eventually distribute the promised payouts.
 
-The market price comes from the orders people submit. A price of 60 is often interpreted as roughly 60% implied probability.
+  The market price comes from the orders people submit. A price of 60 is often interpreted as roughly 60% implied probability.
 
 ---
 Where Do the first contracts come from?
@@ -156,3 +156,118 @@ This is a corresponding complementary sale mechanism:
 - Someone sells an existing YES.
 - Someone else sells an existing NO.
 - The system removes the pair and releases 100 from escrow, divided between the sellers according to the execution rules.
+---
+Why retries need an identity:
+Alice requests a 500¢ deposit.
+The server commits it.
+The response gets lost.
+Alice retries.
+
+The server cannot infer whether the second request means:
+- “Please try that same deposit again.”
+- “Please make another deposit of the same amount.”
+We solve this by giving each intended deposit a requestId.
+
+{
+  "requestId": "deposit-alice-001",
+  "amountCents": 500
+}
+
+The rules will be:
+| Request | Result |
+|---|---|
+| New request ID | Record and credit the deposit |
+| Same request ID, same amount | Return the existing deposit |
+| Same request ID, different amount | Reject with `409 Conflict` |
+
+A second intentional deposit must use a new request ID.
+
+  There are three important decisions here.
+
+We create the entry before incrementing the balance.
+
+If its request ID already exists, the unique constraint rejects the insert. The transaction does not credit another deposit.
+
+If two identical requests arrive together, the database constraint still decides which insert succeeds. A preliminary “does it exist?” check would not provide that guarantee.
+
+We use increment, rather than reading and replacing the balance.
+We handle the duplicate after the transaction has failed.
+
+---
+SPLIT code:
+Notice:
+- Alice’s lockedCents does not increase. This is an immediate purchase of a pair, not a resting order.
+- Only available cash can fund the split.
+- No other trader is required.
+- Nobody earns a profit from the split itself.
+All of these changes must commit together.
+
+A transaction and a lock solve different problems
+
+A transaction gives us:
+Either all changes commit, or none do.
+
+But consider two requests, each attempting to spend Alice’s last 300¢. If they both read the balance before either updates it, both could decide that enough cash exists.
+
+For this operation, we’ll lock the wallet row before checking available cash.
+
+The second request waits. After the first commits, the second reads the updated balance and makes its decision using that value.
+
+We’ll also lock the market row so operations changing its lifecycle and collateral can follow a consistent order.
+
+We’ll use PostgreSQL’s FOR NO KEY UPDATE. It protects the row against concurrent updates while allowing foreign-key checks that only need to reference its ID. Locks are released when the transaction ends. 
+
+There are a few new details worth understanding.
+
+Why create the history entry first?
+
+Its unique request ID claims the operation. If this is a retry of a committed request, the insert fails and we return the existing result.
+The entry is still inside the transaction. If the market is closed or funds are insufficient, it rolls back too. There is no completed split entry left behind.
+
+Why use upsert for positions?
+It means:
+- If this position does not exist, create it.
+- If it exists, add to its quantity.
+
+--- 
+MERGE code:
+Only available contracts can be merged.
+
+Suppose Alice owns five YES contracts, but four are reserved for a SELL order:
+- quantity             = 5
+- lockedQuantity = 4
+- available            = 1
+
+Even if she owns five NO contracts, she can merge only one pair.
+Otherwise, we would destroy contracts already promised to a potential buyer.
+
+The order is deliberate:
+Claim request ID
+    ↓
+Lock market
+    ↓
+Lock wallet
+    ↓
+Lock positions in a consistent order
+    ↓
+Validate current state
+    ↓
+Reduce contracts and escrow
+    ↓
+Credit cash
+    ↓
+Commit
+
+--- 
+Fill and Orders
+We reserve the asset and create the order in one transaction. The market and asset locks have different jobs. The market lock serializes order acceptance for that market, including two submissions with the same request ID. The wallet lock protects shared cash across markets. For a SELL, we lock the position being reserved. We always take the market lock first, as in SPLIT and MERGE.
+
+Notice where the retry lookup happens. A duplicate request waits for the first transaction to release the market lock, then its next query sees the committed order. It returns that order before touching any reservation, even if the market closed in the meantime. If creating the order fails after the reservation update, the transaction rolls back that update too.
+
+| Check | Expected result |
+|---|---|
+| Submit the BUY | `201`, one `OPEN` order with 10 remaining, wallet still owns 1,000¢ with 600¢ locked |
+| Repeat the identical request | `200`, same order ID, still 600¢ locked |
+| Submit another identical BUY with a new request ID | `400`, because only 400¢ is available |
+| Using a separate user, split three pairs, then place a SELL for two YES | YES quantity stays 3, YES locked quantity becomes 2, NO remains untouched |
+| Try to merge two pairs with that second user | `400`, because only one YES is available to merge |

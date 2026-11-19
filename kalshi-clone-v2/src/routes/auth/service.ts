@@ -1,4 +1,3 @@
-import { AccountType } from "../../../generated/prisma/enums"
 import { ConflictError, UnauthorizedError } from "../../lib/errors"
 import { prisma } from "../../lib/prisma"
 
@@ -21,13 +20,13 @@ export async function signupService(username: string, password: string) {
     data: {
       username: normalizedUsername,
       password: hashedPassword,
-      accounts: {
-        create: {
-          type: AccountType.USER_WALLET,
-          balance: 0,
-          locked: 0,
-        },
-      },
+      // nested write
+      // Prisma creates the user and related wallet inside one transaction
+      // If wallet creation fails, the user creation is rolled back as well
+      // no need to write an additional $transaction around this particular operation
+      wallet: {
+        create: {}
+      }
     },
     select: {
       id: true,

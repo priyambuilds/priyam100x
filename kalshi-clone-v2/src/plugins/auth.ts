@@ -1,7 +1,7 @@
 import Elysia from "elysia"
 import { useJwtPlugin } from "./jwt"
 import bearer from "@elysia/bearer"
-import { UnauthorizedError } from "../../../ticket-booking-system-v5/src/lib/errors"
+import { UnauthorizedError } from "../lib/errors";
 export const useAuthPlugin = new Elysia({ name: "auth-plugin" })
   .use(useJwtPlugin)
   .use(bearer())
