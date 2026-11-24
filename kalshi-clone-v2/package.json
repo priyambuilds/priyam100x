@@ -11,21 +11,17 @@
     "@elysia/eden": "^1.4.10",
     "@elysia/jwt": "^1.4.2",
     "@elysia/openapi": "^1.4.16",
-    "@prisma/adapter-pg": "^7.10.1",
-    "@prisma/client": "7",
     "dotenv": "^18.0.10",
     "elysia": "latest",
     "ioredis": "^6.0.0",
-    "pg": "^8.23.1"
+    "pg": "^8.23.1",
+    "drizzle-orm": "0.45.4"
   },
   "devDependencies": {
     "@types/bun": "^1.4.4",
     "@types/pg": "^8.23.1",
     "bun-types": "latest",
-    "prisma": "^7.10.1"
+    "drizzle-kit": "0.31.11"
   },
-  "module": "src/index.js",
-  "generate": {
-    "./prisma7.config.ts": true
-  }
+  "module": "src/index.ts"
 }

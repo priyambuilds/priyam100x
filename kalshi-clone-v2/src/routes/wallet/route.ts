@@ -1,27 +1,26 @@
 import Elysia from "elysia"
 import { useAuthPlugin } from "../../plugins/auth"
-import { depositService, getWalletService } from "./service"
+import { depositService, getWalletBalanceService } from "./service"
 import { depositSchema } from "./types"
 
 export const walletRoutes = new Elysia({ prefix: "/wallet" })
   .use(useAuthPlugin)
-  .get("", async ({ userId, status }) => {
-    const data = await getWalletService(userId)
+  .post(
+    "/deposits",
+    async ({ body, userId, status }) => {
+      const data = await depositService(userId, body)
+      return status(data.created ? 201 : 200, {
+        success: true,
+        data: { transactionid: data.transactionId, amountCents: data.amountCents },
+      })
+    },
+    { body: depositSchema },
+  )
+
+  .get("/balance", async ({ userId, status }) => {
+    const data = await getWalletBalanceService(userId)
     return status(201, {
       success: true,
       data,
     })
   })
-  .post(
-    "/deposits",
-    async ({ body, status, userId }) => {
-      const data = await depositService(userId, body.amountCents, body.requestId)
-      return status(data.replayed ? 200 : 201, {
-        success: true,
-        data,
-      })
-    },
-    {
-      body: depositSchema,
-    },
-  )

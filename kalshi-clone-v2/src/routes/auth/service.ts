@@ -1,61 +1,49 @@
+import { LoginInput, SignupInput } from "./types"
+import { db } from "../../db/client"
+import { cashAccounts, users } from "../../db/schema"
 import { ConflictError, UnauthorizedError } from "../../lib/errors"
-import { prisma } from "../../lib/prisma"
+import { eq } from "drizzle-orm"
 
-const normalized = (name: string) => name.trim().toLowerCase()
+export const signupService = async ({ username, password }: SignupInput) => {
+  const normalizedUsername = username.trim().toLowerCase()
+  const passwordHash = await Bun.password.hash(password)
 
-export async function signupService(username: string, password: string) {
-  const normalizedUsername = normalized(username)
+  return db.transaction(async (tx) => {
+    const [user] = await tx
+      .insert(users)
+      .values({
+        username: normalizedUsername,
+        passwordHash,
+      })
+      .onConflictDoNothing({ target: users.username })
+      .returning({ id: users.id, username: users.username, role: users.role })
 
-  const existing = await prisma.user.findUnique({
-    where: { username: normalizedUsername },
+    if (!user) {
+      throw new ConflictError("Username is already taken")
+    }
+
+    await tx.insert(cashAccounts).values({
+      kind: "USER_WALLET",
+      userId: user.id,
+    })
+    return user
   })
-
-  if (existing) {
-    throw new ConflictError("Username already exists")
-  }
-
-  const hashedPassword = await Bun.password.hash(password)
-
-  const user = await prisma.user.create({
-    data: {
-      username: normalizedUsername,
-      password: hashedPassword,
-      // nested write
-      // Prisma creates the user and related wallet inside one transaction
-      // If wallet creation fails, the user creation is rolled back as well
-      // no need to write an additional $transaction around this particular operation
-      wallet: {
-        create: {}
-      }
-    },
-    select: {
-      id: true,
-      username: true,
-      createdAt: true,
-    },
-  })
-  return user
 }
+export const loginService = async ({ username, password }: LoginInput) => {
+  const normalizedUsername = username.trim().toLowerCase()
 
-export async function signinService(username: string, password: string) {
-  const normalizedUsername = normalized(username)
+  const [user] = await db
+    .select({
+      id: users.id,
+      passwordHash: users.passwordHash,
+    })
+    .from(users)
+    .where(eq(users.username, normalizedUsername))
+    .limit(1)
 
-  const user = await prisma.user.findUnique({
-    where: { username: normalizedUsername },
-  })
-
-  if (!user) {
-    throw new UnauthorizedError("Invalid Credentials")
+  if (!user || !(await Bun.password.verify(password, user.passwordHash))) {
+    throw new UnauthorizedError("Invalid username or password")
   }
 
-  const valid = await Bun.password.verify(password, user.password)
-
-  if (!valid) {
-    throw new UnauthorizedError("Invalid creds")
-  }
-
-  return {
-    userId: user.id,
-    username: user.username,
-  }
+  return { id: user.id }
 }

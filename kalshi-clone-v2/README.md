@@ -264,6 +264,7 @@ We reserve the asset and create the order in one transaction. The market and ass
 
 Notice where the retry lookup happens. A duplicate request waits for the first transaction to release the market lock, then its next query sees the committed order. It returns that order before touching any reservation, even if the market closed in the meantime. If creating the order fails after the reservation update, the transaction rolls back that update too.
 
+
 | Check | Expected result |
 |---|---|
 | Submit the BUY | `201`, one `OPEN` order with 10 remaining, wallet still owns 1,000¢ with 600¢ locked |
@@ -271,3 +272,30 @@ Notice where the retry lookup happens. A duplicate request waits for the first t
 | Submit another identical BUY with a new request ID | `400`, because only 400¢ is available |
 | Using a separate user, split three pairs, then place a SELL for two YES | YES quantity stays 3, YES locked quantity becomes 2, NO remains untouched |
 | Try to merge two pairs with that second user | `400`, because only one YES is available to merge |
+
+Let’s design the whole schema first. The most important decision is what counts as the source of truth. For this exchange, I’d use three kinds of records:
+1. Ledger transfers explain who owns cash and contracts.
+2. Orders explain what users have promised to buy or sell and what assets are reserved.
+3. Fills explain which orders actually traded, at what price, and which ledger transaction moved the assets.
+That lets us answer three different questions about Alice: What does she own? What can she still spend? How did she acquire it?
+
+---
+Migrating to drizzle:
+Asset table: 
+When Alice transfers two contracts to Bob, both accounts must hold the 
+exact same kind of contract. Alice’s Market A YES cannot arrive as Bob’s Market B YES.
+To enforce that rule, it helps to give “Market A YES” one shared identity that every account can reference.
+ 
+assets
+  AY = Market A, YES
+
+accounts
+  account 17 = Alice’s holding of asset AY
+  account 24 = Bob’s holding of asset AY
+
+ledger_transfers
+  asset AY | from account 17 | to account 24 | amount 2
+Suppose Alice previously received 5 units of AY through a split, and Bob started with zero. 
+After this sale, Alice holds 5 − 2 = 3, and Bob holds 0 + 2 = 2. 
+There’s still one asset definition, five outstanding YES contracts, and two users holding them. 
+Putting a single quantity on the asset row couldn’t tell you that split of ownership.

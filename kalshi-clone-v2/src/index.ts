@@ -1,11 +1,11 @@
 import "dotenv/config"
-
 import { app } from "./app"
+import { createExternalCashAccount } from "./db/bootstrap"
 
+await createExternalCashAccount()
 app.listen(3000)
 
 console.log(`Server running at http://${app.server?.hostname}:${app.server?.port}`)
-
 
 // The separation is:
 // - app.ts defines the application.

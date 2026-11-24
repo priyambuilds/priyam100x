@@ -1,91 +1,102 @@
-import { WalletEntryType } from "../../../generated/prisma/enums";
-import { BadRequestError, ConflictError, NotFoundError } from "../../lib/errors";
-import { prisma } from "../../lib/prisma";
-import {Prisma} from "../../../generated/prisma/client";
-export const getWalletService = async (userId: string) => {
-  const wallet = await prisma.wallet.findUnique({
-    where: { userId },
-    select: {
-      id: true,
-      balanceCents: true,
-      lockedCents: true,
-    },
-  })
+import { and, eq, or, sql } from "drizzle-orm"
+import { db } from "../../db/client"
+import { cashAccounts, cashTransfers, ledgerTransactions } from "../../db/schema"
+import { DepositInput } from "./types"
+import { ConflictError, NotFoundError } from "../../lib/errors"
 
-  if (!wallet) {
-    throw new NotFoundError("Wallet not found");
-  }
+export async function depositService(userId: string, { amountCents, requestId }: DepositInput) {
+  const amount = BigInt(amountCents)
 
-  return {
-    id: wallet.id,
-    balanceCents: wallet.balanceCents,
-    lockedCents: wallet.lockedCents,
-    availableCents: wallet.balanceCents - wallet.lockedCents
-  }
-}
-
-export async function depositService(
-  userId: string,
-  amountCents: number,
-  requestId: string
-) {
-  if (!Number.isInteger(amountCents) || amountCents < 1 || amountCents > 1_000_000) {
-    throw new BadRequestError("Invalid deposit amount");
-  }
-  const wallet = await prisma.wallet.findUnique({
-    where: { userId },
-    select: {id: true}
-  })
-  if (!wallet) {
-    throw new NotFoundError("Wallet not found");
-  }
-
-  try {
-    const entry = await prisma.$transaction(async (tx) => {
-      const createdEntry = await tx.walletEntry.create({
-        data: {
-          walletId: wallet.id,
-          type: WalletEntryType.DEPOSIT,
-          amountCents,
-          requestId
-        }
-      });
-      await tx.wallet.update({
-        where: { id: wallet.id },
-        data: {
-          balanceCents: {
-            increment: amountCents
-          }
-        }
+  return db.transaction(async (tx) => {
+    const [entry] = await tx
+      .insert(ledgerTransactions)
+      .values({
+        kind: "DEPOSIT",
+        actorUserId: userId,
+        requestId,
       })
-      return createdEntry;
-    })
-    return {
-      entry,
-      replayed: false
-    }
-  } catch (e) {
-    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
-      const existing = await prisma.walletEntry.findUnique({
-        where: {
-          walletId_requestId: {
-            walletId: wallet.id,
-            requestId
-          }
-        }
+      .onConflictDoNothing({
+        target: [ledgerTransactions.actorUserId, ledgerTransactions.requestId],
       })
+      .returning({ id: ledgerTransactions.id })
 
-      if (!existing) {
-        throw e;
-      }
-      if (existing.type !== "DEPOSIT" || existing.amountCents !==amountCents) {
+    if (!entry) {
+      const [previous] = await tx
+        .select({
+          id: ledgerTransactions.id,
+          amountCents: cashTransfers.amountCents,
+        })
+        .from(ledgerTransactions)
+        .innerJoin(cashTransfers, eq(cashTransfers.transactionId, ledgerTransactions.id))
+        .where(
+          and(
+            eq(ledgerTransactions.actorUserId, userId),
+            eq(ledgerTransactions.requestId, requestId),
+            eq(ledgerTransactions.kind, "DEPOSIT"),
+          ),
+        )
+
+      if (!previous || previous.amountCents !== amount) {
         throw new ConflictError("Request ID already used for a different operation")
       }
-      return {
-        entry: existing,
-        replayed: true
-      }
+      return { transactionId: previous.id, amountCents, created: false }
     }
-    throw e;
+
+    const [wallet] = await tx
+      .select({ id: cashAccounts.id })
+      .from(cashAccounts)
+      .where(and(eq(cashAccounts.kind, "USER_WALLET"), eq(cashAccounts.userId, userId)))
+
+    if (!wallet) {
+      throw new NotFoundError("Wallet not found")
+    }
+
+    const [external] = await tx
+      .select({ id: cashAccounts.id })
+      .from(cashAccounts)
+      .where(eq(cashAccounts.kind, "EXTERNAL"))
+
+    if (!external) {
+      throw new Error("External account has not been initialized")
+    }
+
+    await tx.insert(cashTransfers).values({
+      transactionId: entry.id,
+      fromAccountId: external.id,
+      toAccountId: wallet.id,
+      amountCents: amount,
+    })
+
+    return { transactionId: entry.id, amountCents, created: true }
+  })
+}
+
+export async function getWalletBalanceService(userId: string) {
+  const [wallet] = await db
+    .select({
+      balanceCents: sql<string>`
+      coalesce(
+        sum(
+          case
+            when ${cashTransfers.toAccountId} = ${cashAccounts.id}
+            then ${cashTransfers.amountCents}
+            else -${cashTransfers.amountCents}
+            end
+        ),
+        0
+      )::text
+    `,
+    })
+    .from(cashAccounts)
+    .leftJoin(
+      cashTransfers,
+      or(eq(cashTransfers.toAccountId, cashAccounts.id), eq(cashTransfers.fromAccountId, cashAccounts.id)),
+    )
+    .where(and(eq(cashAccounts.kind, "USER_WALLET"), eq(cashAccounts.userId, userId)))
+    .groupBy(cashAccounts.id)
+  
+  if (!wallet) {
+    throw new NotFoundError("Wallet not found");
   }
+  return wallet;
 }
